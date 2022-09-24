@@ -18,10 +18,10 @@ func main() {
 			fmt.Println("0 : err:", err)
 		})
 
-		GetUserName(10).Then(func(x interface{}) {
-			fmt.Println("10 : user:", x)
+		GetUserName(15).Then(func(x interface{}) {
+			fmt.Println("15 : user:", x)
 		}).Catch(func(err error) {
-			fmt.Println("10 : err:", err)
+			fmt.Println("15 : err:", err)
 		})
 
 		//	await
@@ -30,6 +30,12 @@ func main() {
 
 		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
 		fmt.Println("1 : user:", syncResult2)
+		
+		asyncResult1 := GetUserName(6)
+		asyncResult2 := GetUserName(3)
+		
+		fmt.Println("asyncResult1", GlobalEventLoop.Await(asyncResult1))
+		fmt.Println("asyncResult2", GlobalEventLoop.Await(asyncResult2))
 
 		fmt.Println("done")
 
@@ -44,8 +50,10 @@ run before promise returns
 2 : user: id(2ns): Test User
 4 : user: id(4ns): Test User
 1 : user: id(1ns): Test User
+asyncResult1 id(6ns): Test User
+asyncResult2 id(3ns): Test User
 done
-10 : user: id(10ns): Test User
+15 : user: id(15ns): Test User
 
 ```
 

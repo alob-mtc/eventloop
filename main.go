@@ -24,10 +24,10 @@ func main() {
 			fmt.Println("0 : err:", err)
 		})
 
-		GetUserName(10).Then(func(x interface{}) {
-			fmt.Println("10 : user:", x)
+		GetUserName(15).Then(func(x interface{}) {
+			fmt.Println("15 : user:", x)
 		}).Catch(func(err error) {
-			fmt.Println("10 : err:", err)
+			fmt.Println("15 : err:", err)
 		})
 
 		//	await
@@ -36,6 +36,12 @@ func main() {
 
 		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
 		fmt.Println("1 : user:", syncResult2)
+
+		asyncResult1 := GetUserName(6)
+		asyncResult2 := GetUserName(3)
+
+		fmt.Println("asyncResult1", GlobalEventLoop.Await(asyncResult1))
+		fmt.Println("asyncResult2", GlobalEventLoop.Await(asyncResult2))
 
 		fmt.Println("done")
 
