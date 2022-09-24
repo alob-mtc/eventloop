@@ -25,15 +25,6 @@ func main() {
 			fmt.Println("5 : err:", err)
 		})
 
-		// TODO: nested promises not very functional
-		GetUserName(7).Then(func(x interface{}) {
-			fmt.Println("7 (1): user:", x)
-		}).Then(func(x interface{}) {
-			fmt.Println("7 (2) : user:", x)
-			panic("another panic attack")
-		}).Catch(func(err error) {
-			fmt.Println("7 : err:", err)
-		})
 
 		GetUserName(15).Then(func(x interface{}) {
 			fmt.Println("15 : user:", x)
@@ -77,5 +68,22 @@ done
 15 : user: id(15ns): Test User
 
 ```
+
+## TODO
+
+- [ ] nested promises not very functional
+
+```go
+GetUserName(7).Then(func(x interface{}) {
+	fmt.Println("7 (1): user:", x)
+}).Then(func(x interface{}) {
+	fmt.Println("7 (2) : user:", x)
+	panic("another panic attack")
+}).Catch(func(err error) {
+	fmt.Println("7 : err:", err)
+})
+```
+
+- [ ] await all promises
 
 > just a fun project, we might just learn something

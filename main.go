@@ -32,7 +32,7 @@ func main() {
 			fmt.Println("5 : err:", err)
 		})
 
-		// TODO: nested promises not very functional
+		// nested promises
 		GetUserName(7).Then(func(x interface{}) {
 			fmt.Println("7 (1): user:", x)
 		}).Then(func(x interface{}) {
