@@ -36,5 +36,18 @@ func main() {
 	})
 }
 ```
+#### result
+
+```shell
+run before promise returns
+0 : err: some error id(0s)
+2 : user: id(2ns): Test User
+4 : user: id(4ns): Test User
+1 : user: id(1ns): Test User
+done
+10 : user: id(10ns): Test User
+
+```
+
 
 > just a fun project, we might just learn something
