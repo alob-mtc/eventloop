@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/alob-mtc/go-promise/eventloop"
 	"time"
+
+	"github.com/alob-mtc/go-promise/eventloop"
 )
 
 var GlobalEventLoop = eventloop.New()
@@ -22,6 +23,23 @@ func main() {
 			fmt.Println("0 : user:", x)
 		}).Catch(func(err error) {
 			fmt.Println("0 : err:", err)
+		})
+
+		GetUserName(5).Then(func(x interface{}) {
+			fmt.Println("5 : user:", x)
+			panic("a panic attack")
+		}).Catch(func(err error) {
+			fmt.Println("5 : err:", err)
+		})
+
+		// nested promises
+		GetUserName(7).Then(func(x interface{}) {
+			fmt.Println("7 (1): user:", x)
+		}).Then(func(x interface{}) {
+			fmt.Println("7 (2) : user:", x)
+			panic("another panic attack")
+		}).Catch(func(err error) {
+			fmt.Println("7 : err:", err)
 		})
 
 		GetUserName(15).Then(func(x interface{}) {
