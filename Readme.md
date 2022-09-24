@@ -36,3 +36,5 @@ func main() {
 	})
 }
 ```
+
+> just a fun project, we might just learn something
