@@ -7,7 +7,12 @@ import (
 	"github.com/alob-mtc/go-promise/eventloop"
 )
 
-var GlobalEventLoop = eventloop.New()
+var GlobalEventLoop *eventloop.EventLoop
+
+func init() {
+	eventloop.Init()
+	GlobalEventLoop = eventloop.GetGlobalEventLoop()
+}
 
 func main() {
 	GlobalEventLoop.Main(func() {

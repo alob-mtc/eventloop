@@ -2,14 +2,24 @@ package eventloop
 
 import (
 	"errors"
+	"sync"
 )
+
+var once sync.Once
+var GlobalEventLoop *EventLoop
 
 type EventLoop struct {
 	promiseQueue []*Promise
 }
 
-func New() *EventLoop {
-	return &EventLoop{promiseQueue: []*Promise{}}
+func Init() {
+	once.Do(func() {
+		GlobalEventLoop = &EventLoop{promiseQueue: []*Promise{}}
+	})
+}
+
+func GetGlobalEventLoop() *EventLoop {
+	return GlobalEventLoop
 }
 
 func (e *EventLoop) Await(currentP *Promise) interface{} {
@@ -22,7 +32,7 @@ func (e *EventLoop) Await(currentP *Promise) interface{} {
 func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 	resultChan := make(chan interface{})
 	errChan := make(chan error)
-	p := e.NewPromise(resultChan, errChan)
+	p := e.newPromise(resultChan, errChan)
 	go func() {
 		result, err := fn()
 		if err != nil {
@@ -55,7 +65,7 @@ type Promise struct {
 	done    chan struct{}
 }
 
-func (e *EventLoop) NewPromise(rev <-chan interface{}, errChan chan error) *Promise {
+func (e *EventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Promise {
 	currentP := &Promise{rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
 	e.promiseQueue = append(e.promiseQueue, currentP)
 	return currentP

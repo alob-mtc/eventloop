@@ -1,6 +1,15 @@
 Go-Promise
 
 ```go
+func GetUserName(id time.Duration) *eventloop.Promise {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * id)
+		if id == 0 {
+			return nil, fmt.Errorf("some error id(%s)", id)
+		}
+		return fmt.Sprintf("id(%s): Test User", id), nil
+	})
+}
 
 func main() {
 	GlobalEventLoop.Main(func() {
@@ -39,11 +48,10 @@ func main() {
 		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
 		fmt.Println("1 : user:", syncResult2)
 
-		asyncResult1 := GetUserName(6)
-		asyncResult2 := GetUserName(3)
+		asyncResult := GetUserName(6)
+		GetUserName(3)
 
-		fmt.Println("asyncResult1", GlobalEventLoop.Await(asyncResult1))
-		fmt.Println("asyncResult2", GlobalEventLoop.Await(asyncResult2))
+		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
 
 		fmt.Println("done")
 
@@ -61,12 +69,9 @@ run before promise returns
 5 : user: id(5ns): Test User
 5 : err: a panic attack
 1 : user: id(1ns): Test User
-7 (1): user: id(7ns): Test User
-asyncResult1 id(6ns): Test User
-asyncResult2 id(3ns): Test User
+asyncResult id(6ns): Test User
 done
 15 : user: id(15ns): Test User
-
 ```
 
 ## TODO
