@@ -32,16 +32,6 @@ func main() {
 			fmt.Println("5 : err:", err)
 		})
 
-		// nested promises
-		GetUserName(7).Then(func(x interface{}) {
-			fmt.Println("7 (1): user:", x)
-		}).Then(func(x interface{}) {
-			fmt.Println("7 (2) : user:", x)
-			panic("another panic attack")
-		}).Catch(func(err error) {
-			fmt.Println("7 : err:", err)
-		})
-
 		GetUserName(15).Then(func(x interface{}) {
 			fmt.Println("15 : user:", x)
 		}).Catch(func(err error) {
@@ -55,11 +45,10 @@ func main() {
 		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
 		fmt.Println("1 : user:", syncResult2)
 
-		asyncResult1 := GetUserName(6)
-		asyncResult2 := GetUserName(3)
+		asyncResult := GetUserName(6)
+		GetUserName(3)
 
-		fmt.Println("asyncResult1", GlobalEventLoop.Await(asyncResult1))
-		fmt.Println("asyncResult2", GlobalEventLoop.Await(asyncResult2))
+		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
 
 		fmt.Println("done")
 
@@ -67,17 +56,11 @@ func main() {
 }
 
 func GetUserName(id time.Duration) *eventloop.Promise {
-	result := make(chan interface{})
-	errChan := make(chan error)
-
-	go func() {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
 		<-time.After(time.Second * id)
 		if id == 0 {
-			errChan <- fmt.Errorf("some error id(%s)", id)
-		} else {
-			result <- fmt.Sprintf("id(%s): Test User", id)
+			return nil, fmt.Errorf("some error id(%s)", id)
 		}
-	}()
-
-	return GlobalEventLoop.NewPromise(result, errChan)
+		return fmt.Sprintf("id(%s): Test User", id), nil
+	})
 }

@@ -8,26 +8,47 @@ type EventLoop struct {
 	promiseQueue []*Promise
 }
 
-func (e *EventLoop) Await(currentP *Promise) interface{} {
-	val := <-currentP.rev
-	go func() { currentP.done <- struct{}{} }()
-	return val
-}
-
-func (e *EventLoop) Main(fn func()) {
-	fn()
-	//TODO: await all promises
-	for i := len(e.promiseQueue) - 1; i >= 0; i-- {
-		p := e.promiseQueue[i]
-		<-p.done
-	}
-}
-
 func New() *EventLoop {
 	return &EventLoop{promiseQueue: []*Promise{}}
 }
 
+func (e *EventLoop) Await(currentP *Promise) interface{} {
+	defer currentP.Done()
+	currentP.RegisterHandler()
+	val := <-currentP.rev
+	return val
+}
+
+func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
+	resultChan := make(chan interface{})
+	errChan := make(chan error)
+	p := e.NewPromise(resultChan, errChan)
+	go func() {
+		result, err := fn()
+		if err != nil {
+			errChan <- err
+			return
+		}
+		resultChan <- result
+	}()
+	return p
+}
+
+func (e *EventLoop) Main(fn func()) {
+	fn()
+	//await all promises
+	for i := len(e.promiseQueue) - 1; i >= 0; i-- {
+		p := e.promiseQueue[i]
+		if p.handler {
+			<-p.done
+		}
+	}
+}
+
+//Promise
+
 type Promise struct {
+	handler bool
 	rev     <-chan interface{}
 	errChan chan error
 	err     chan struct{}
@@ -40,7 +61,16 @@ func (e *EventLoop) NewPromise(rev <-chan interface{}, errChan chan error) *Prom
 	return currentP
 }
 
+func (p *Promise) Done() {
+	close(p.done)
+}
+
+func (p *Promise) RegisterHandler() {
+	p.handler = true
+}
+
 func (p *Promise) Then(fn func(interface{})) *Promise {
+	p.RegisterHandler()
 	go func() {
 		select {
 		case <-p.err:
@@ -57,7 +87,7 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 					}
 				} else {
 					close(p.err)
-					p.done <- struct{}{}
+					p.Done()
 				}
 			}()
 			fn(val)
@@ -67,13 +97,14 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 }
 
 func (p *Promise) Catch(fn func(err error)) {
+	p.RegisterHandler()
 	go func() {
 		select {
 		case <-p.err:
 		case err := <-p.errChan:
 			close(p.err)
 			fn(err)
-			p.done <- struct{}{}
+			p.Done()
 		}
 	}()
 }
