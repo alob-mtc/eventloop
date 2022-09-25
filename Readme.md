@@ -54,7 +54,6 @@ func main() {
 		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
 
 		fmt.Println("done")
-
 	})
 }
 ```

@@ -57,6 +57,21 @@ func main() {
 
 		fmt.Println("done")
 
+		//nested promise
+		GlobalEventLoop.Async(func() (interface{}, error) {
+			fmt.Println("outer async")
+			GlobalEventLoop.Async(func() (interface{}, error) {
+				fmt.Println("inner async")
+				return nil, nil
+			}).Then(func(_ interface{}) {
+				fmt.Println("resolved inner promise")
+			})
+			<-time.After(time.Second * 2)
+			return nil, nil
+		}).Then(func(_ interface{}) {
+			fmt.Println("resolved outer promise")
+		})
+
 	})
 }
 

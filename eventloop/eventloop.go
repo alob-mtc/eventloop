@@ -3,6 +3,7 @@ package eventloop
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 )
 
 var once sync.Once
@@ -10,6 +11,7 @@ var GlobalEventLoop *EventLoop
 
 type EventLoop struct {
 	promiseQueue []*Promise
+	size         uint64
 }
 
 func Init() {
@@ -47,10 +49,19 @@ func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 func (e *EventLoop) Main(fn func()) {
 	fn()
 	//await all promises
-	for i := len(e.promiseQueue) - 1; i >= 0; i-- {
+	e.awaitAll()
+}
+
+func (e *EventLoop) awaitAll() {
+	n := len(e.promiseQueue)
+	for i := n - 1; i >= 0; i-- {
 		p := e.promiseQueue[i]
 		if p.handler {
 			<-p.done
+		}
+		if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
+			// process fresh promise
+			e.awaitAll()
 		}
 	}
 }
@@ -58,6 +69,7 @@ func (e *EventLoop) Main(fn func()) {
 //Promise
 
 type Promise struct {
+	id      uint64
 	handler bool
 	rev     <-chan interface{}
 	errChan chan error
@@ -66,7 +78,7 @@ type Promise struct {
 }
 
 func (e *EventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Promise {
-	currentP := &Promise{rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
+	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
 	e.promiseQueue = append(e.promiseQueue, currentP)
 	return currentP
 }
