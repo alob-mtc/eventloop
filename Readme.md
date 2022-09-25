@@ -1,6 +1,16 @@
 Go-Promise
 
 ```go
+func GetUserName(id time.Duration) *eventloop.Promise {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * id)
+		if id == 0 {
+			return nil, fmt.Errorf("some error id(%s)", id)
+		}
+		return fmt.Sprintf("id(%s): Test User", id), nil
+	})
+}
+
 func main() {
 	GlobalEventLoop.Main(func() {
 		result := GetUserName(2)
@@ -61,17 +71,6 @@ func main() {
 
 	})
 }
-
-func GetUserName(id time.Duration) *eventloop.Promise {
-	return GlobalEventLoop.Async(func() (interface{}, error) {
-		<-time.After(time.Second * id)
-		if id == 0 {
-			return nil, fmt.Errorf("some error id(%s)", id)
-		}
-		return fmt.Sprintf("id(%s): Test User", id), nil
-	})
-}
-
 ```
 
 #### result
