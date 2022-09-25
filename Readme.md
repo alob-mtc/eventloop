@@ -1,16 +1,6 @@
 Go-Promise
 
 ```go
-func GetUserName(id time.Duration) *eventloop.Promise {
-	return GlobalEventLoop.Async(func() (interface{}, error) {
-		<-time.After(time.Second * id)
-		if id == 0 {
-			return nil, fmt.Errorf("some error id(%s)", id)
-		}
-		return fmt.Sprintf("id(%s): Test User", id), nil
-	})
-}
-
 func main() {
 	GlobalEventLoop.Main(func() {
 		result := GetUserName(2)
@@ -34,7 +24,6 @@ func main() {
 			fmt.Println("5 : err:", err)
 		})
 
-
 		GetUserName(15).Then(func(x interface{}) {
 			fmt.Println("15 : user:", x)
 		}).Catch(func(err error) {
@@ -54,8 +43,35 @@ func main() {
 		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
 
 		fmt.Println("done")
+
+		//nested promise
+		GlobalEventLoop.Async(func() (interface{}, error) {
+			fmt.Println("outer async")
+			GlobalEventLoop.Async(func() (interface{}, error) {
+				fmt.Println("inner async")
+				return nil, nil
+			}).Then(func(_ interface{}) {
+				fmt.Println("resolved inner promise")
+			})
+			<-time.After(time.Second * 2)
+			return nil, nil
+		}).Then(func(_ interface{}) {
+			fmt.Println("resolved outer promise")
+		})
+
 	})
 }
+
+func GetUserName(id time.Duration) *eventloop.Promise {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * id)
+		if id == 0 {
+			return nil, fmt.Errorf("some error id(%s)", id)
+		}
+		return fmt.Sprintf("id(%s): Test User", id), nil
+	})
+}
+
 ```
 
 #### result
@@ -70,12 +86,18 @@ run before promise returns
 1 : user: id(1ns): Test User
 asyncResult id(6ns): Test User
 done
+outer async
+inner async
+resolved inner promise
+resolved outer promise
 15 : user: id(15ns): Test User
+
 ```
 
 ## TODO
 
-- [ ] nested promises not very functional
+- [x] nested promises
+- [ ] chained .then 
 
 ```go
 GetUserName(7).Then(func(x interface{}) {
