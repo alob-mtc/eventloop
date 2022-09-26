@@ -14,6 +14,16 @@ func init() {
 	GlobalEventLoop = eventloop.GetGlobalEventLoop()
 }
 
+func GetUserNameWithPanic(id time.Duration) *eventloop.Promise {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * id)
+		if id == 0 {
+			return nil, fmt.Errorf("some error id(%s)", id)
+		}
+		panic("wahala don dey")
+	})
+}
+
 func GetUserName(id time.Duration) *eventloop.Promise {
 	return GlobalEventLoop.Async(func() (interface{}, error) {
 		<-time.After(time.Second * id)
@@ -82,5 +92,10 @@ func main() {
 			fmt.Println("resolved outer promise")
 		})
 
+		GetUserNameWithPanic(7).Then(func(x interface{}) {
+			fmt.Println("7 : user:", x)
+		}).Catch(func(err error) {
+			fmt.Println("7 : err:", err)
+		})
 	})
 }

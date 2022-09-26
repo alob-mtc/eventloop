@@ -1,7 +1,7 @@
 package eventloop
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -27,8 +27,15 @@ func GetGlobalEventLoop() *EventLoop {
 func (e *EventLoop) Await(currentP *Promise) interface{} {
 	defer currentP.Done()
 	currentP.RegisterHandler()
-	val := <-currentP.rev
-	return val
+	for {
+		select {
+		case err := <-currentP.errChan:
+			return err
+		case rev := <-currentP.rev:
+			return rev
+		}
+	}
+
 }
 
 func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
@@ -36,6 +43,16 @@ func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 	errChan := make(chan error)
 	p := e.newPromise(resultChan, errChan)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				switch x := r.(type) {
+				case error:
+					p.errChan <- x
+				default:
+					p.errChan <- fmt.Errorf(`unknown error: %v`, x)
+				}
+			}
+		}()
 		result, err := fn()
 		if err != nil {
 			errChan <- err
@@ -56,8 +73,13 @@ func (e *EventLoop) awaitAll() {
 	n := len(e.promiseQueue)
 	for i := n - 1; i >= 0; i-- {
 		p := e.promiseQueue[i]
-		if p.handler {
-			<-p.done
+		select {
+		case <-p.errChan:
+			continue
+		default:
+			if p.handler {
+				<-p.done
+			}
 		}
 		if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
 			// process fresh promise
@@ -100,12 +122,10 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 			defer func() {
 				if r := recover(); r != nil {
 					switch x := r.(type) {
-					case string:
-						p.errChan <- errors.New(x)
 					case error:
 						p.errChan <- x
 					default:
-						p.errChan <- errors.New("unknown error")
+						p.errChan <- fmt.Errorf(`unknown error; err: %v`, x)
 					}
 				} else {
 					close(p.err)
