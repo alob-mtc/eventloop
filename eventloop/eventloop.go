@@ -24,15 +24,15 @@ func GetGlobalEventLoop() *EventLoop {
 	return GlobalEventLoop
 }
 
-func (e *EventLoop) Await(currentP *Promise) interface{} {
+func (e *EventLoop) Await(currentP *Promise) (interface{}, error) {
 	defer currentP.Done()
 	currentP.RegisterHandler()
 	for {
 		select {
 		case err := <-currentP.errChan:
-			return err
+			return nil, err
 		case rev := <-currentP.rev:
-			return rev
+			return rev, nil
 		}
 	}
 
@@ -73,13 +73,8 @@ func (e *EventLoop) awaitAll() {
 	n := len(e.promiseQueue)
 	for i := n - 1; i >= 0; i-- {
 		p := e.promiseQueue[i]
-		select {
-		case <-p.errChan:
-			continue
-		default:
-			if p.handler {
-				<-p.done
-			}
+		if p.handler {
+			<-p.done
 		}
 		if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
 			// process fresh promise
@@ -125,7 +120,7 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 					case error:
 						p.errChan <- x
 					default:
-						p.errChan <- fmt.Errorf(`unknown error; err: %v`, x)
+						p.errChan <- fmt.Errorf(`unknown error: %v`, x)
 					}
 				} else {
 					close(p.err)

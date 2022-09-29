@@ -64,16 +64,18 @@ func main() {
 		})
 
 		//	await
-		syncResult1 := GlobalEventLoop.Await(GetUserName(4))
-		fmt.Println("4 : user:", syncResult1)
+		syncResult1, err := GlobalEventLoop.Await(GetUserName(4))
+		fmt.Println("4 : user:", syncResult1, err)
 
-		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
-		fmt.Println("1 : user:", syncResult2)
+		syncResult2, err := GlobalEventLoop.Await(GetUserName(1))
+		fmt.Println("1 : user:", syncResult2, err)
 
 		asyncResult := GetUserName(6)
 		GetUserName(3)
 
-		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
+		syncResult, err := GlobalEventLoop.Await(asyncResult)
+
+		fmt.Println("asyncResult", syncResult, err)
 
 		fmt.Println("done")
 
@@ -92,10 +94,20 @@ func main() {
 			fmt.Println("resolved outer promise")
 		})
 
-		GetUserNameWithPanic(7).Then(func(x interface{}) {
+		GetUserNameWithPanic(3).Then(func(x interface{}) {
 			fmt.Println("7 : user:", x)
 		}).Catch(func(err error) {
 			fmt.Println("7 : err:", err)
 		})
+
+		syncResult2, err = GlobalEventLoop.Await(GetUserNameWithPanic(1))
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("1 : user:", syncResult2)
+
+		// GetUserNameWithPanic(1).Then(func(x interface{}) {
+		// 	fmt.Println("7 : user:", x)
+		// })
 	})
 }
