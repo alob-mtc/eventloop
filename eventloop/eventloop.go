@@ -1,9 +1,12 @@
 package eventloop
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var once sync.Once
@@ -36,14 +39,40 @@ func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 	errChan := make(chan error)
 	p := e.newPromise(resultChan, errChan)
 	go func() {
+		recoveryHandler := promiseRecovery(resultChan, errChan)
+		defer func() {
+			if r := recover(); r != nil {
+				switch x := r.(type) {
+				case error:
+					recoveryHandler(nil, x)
+				default:
+					recoveryHandler(nil, fmt.Errorf("%v", x))
+				}
+			}
+		}()
 		result, err := fn()
-		if err != nil {
-			errChan <- err
-			return
-		}
-		resultChan <- result
+		recoveryHandler(result, err)
 	}()
 	return p
+}
+
+func promiseRecovery(resultChan chan interface{}, errChan chan error) func(result interface{}, err error) {
+	return func(result interface{}, err error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+		defer cancel()
+		if err != nil {
+			select {
+			case errChan <- err:
+			case <-ctx.Done():
+			}
+			return
+		}
+
+		select {
+		case resultChan <- result:
+		case <-ctx.Done():
+		}
+	}
 }
 
 func (e *EventLoop) Main(fn func()) {
