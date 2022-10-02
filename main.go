@@ -24,8 +24,16 @@ func GetUserName(id time.Duration) *eventloop.Promise {
 	})
 }
 
+func GetUserNameWithPanic() *eventloop.Promise {
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * 2)
+		panic("panic attack")
+	})
+}
+
 func main() {
 	GlobalEventLoop.Main(func() {
+
 		result := GetUserName(2)
 
 		result.Then(func(x interface{}) {
@@ -51,6 +59,13 @@ func main() {
 			fmt.Println("15 : user:", x)
 		}).Catch(func(err error) {
 			fmt.Println("15 : err:", err)
+		})
+
+		//promise with panic
+		GetUserNameWithPanic().Then(func(i interface{}) {
+			fmt.Println("Then block never gets triggered")
+		}).Catch(func(err error) {
+			fmt.Println("GetUserNameWithPanic err: ", err)
 		})
 
 		//	await
