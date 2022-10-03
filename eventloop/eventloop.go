@@ -135,7 +135,7 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 					case error:
 						p.errChan <- x
 					default:
-						p.errChan <- fmt.Errorf(`unknown error: %v`, x)
+						p.errChan <- fmt.Errorf("%v", x)
 					}
 				} else {
 					close(p.err)
