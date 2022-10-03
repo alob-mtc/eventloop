@@ -27,15 +27,12 @@ func GetGlobalEventLoop() *EventLoop {
 func (e *EventLoop) Await(currentP *Promise) (interface{}, error) {
 	defer currentP.Done()
 	currentP.RegisterHandler()
-	for {
-		select {
-		case err := <-currentP.errChan:
-			return nil, err
-		case rev := <-currentP.rev:
-			return rev, nil
-		}
+	select {
+	case err := <-currentP.errChan:
+		return nil, err
+	case rev := <-currentP.rev:
+		return rev, nil
 	}
-
 }
 
 func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
@@ -43,16 +40,6 @@ func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 	errChan := make(chan error)
 	p := e.newPromise(resultChan, errChan)
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				switch x := r.(type) {
-				case error:
-					p.errChan <- x
-				default:
-					p.errChan <- fmt.Errorf(`unknown error: %v`, x)
-				}
-			}
-		}()
 		result, err := fn()
 		if err != nil {
 			errChan <- err
