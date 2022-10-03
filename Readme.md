@@ -12,15 +12,15 @@ func GetUserName(id time.Duration) *eventloop.Promise {
 }
 
 func GetUserNameWithPanic() *eventloop.Promise {
-    return GlobalEventLoop.Async(func() (interface{}, error) {
-        <-time.After(time.Second * 2)
-        panic("panic attack")
-    })
+	return GlobalEventLoop.Async(func() (interface{}, error) {
+		<-time.After(time.Second * 2)
+		panic("panic attack")
+	})
 }
-
 
 func main() {
 	GlobalEventLoop.Main(func() {
+
 		result := GetUserName(2)
 
 		result.Then(func(x interface{}) {
@@ -47,29 +47,30 @@ func main() {
 		}).Catch(func(err error) {
 			fmt.Println("15 : err:", err)
 		})
-		
-		//  promise with panic 
+
+		//promise with panic
 		GetUserNameWithPanic().Then(func(i interface{}) {
 			fmt.Println("Then block never gets triggered")
 		}).Catch(func(err error) {
 			fmt.Println("GetUserNameWithPanic err: ", err)
 		})
 
-		//  await
-		syncResult1 := GlobalEventLoop.Await(GetUserName(4))
-		fmt.Println("4 : user:", syncResult1)
+		//	await
+		syncResult1, err := GlobalEventLoop.Await(GetUserName(4))
+		fmt.Printf("syncResult1 - value: %v, err: %v\n", syncResult1, err)
 
-		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
-		fmt.Println("1 : user:", syncResult2)
+		syncResult2, err := GlobalEventLoop.Await(GetUserName(1))
+		fmt.Printf("syncResult2 - value: %v, err: %v\n", syncResult2, err)
 
-		asyncResult := GetUserName(6)
+		asyncResult := GetUserName(0)
 		GetUserName(3)
 
-		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
+		syncResult, err := GlobalEventLoop.Await(asyncResult)
+		fmt.Printf("asyncResult - value: %v, err: %v\n", syncResult, err)
 
 		fmt.Println("done")
 
-		//  nested promise
+		//nested promise
 		GlobalEventLoop.Async(func() (interface{}, error) {
 			fmt.Println("outer async")
 			GlobalEventLoop.Async(func() (interface{}, error) {
@@ -83,7 +84,6 @@ func main() {
 		}).Then(func(_ interface{}) {
 			fmt.Println("resolved outer promise")
 		})
-
 	})
 }
 ```
@@ -93,19 +93,20 @@ func main() {
 ```shell
 run before promise returns
 0 : err: some error id(0s)
-GetUserNameWithPanic err:  panic attack
 2 : user: id(2ns): Test User
-4 : user: id(4ns): Test User
-5 : user: id(5ns): Test User
-5 : err: a panic attack
-1 : user: id(1ns): Test User
-asyncResult id(6ns): Test User
+GetUserNameWithPanic err:  panic attack
+syncResult1 - value: id(4ns): Test User, err: <nil>
+syncResult2 - value: <nil>, err: some error id(0s)
+asyncResult - value: <nil>, err: some error id(0s)
 done
 outer async
 inner async
 resolved inner promise
+5 : user: id(5ns): Test User
+5 : err: unknown error: a panic attack
 resolved outer promise
 15 : user: id(15ns): Test User
+
 
 ```
 
