@@ -69,16 +69,17 @@ func main() {
 		})
 
 		//	await
-		syncResult1 := GlobalEventLoop.Await(GetUserName(4))
-		fmt.Println("4 : user:", syncResult1)
+		syncResult1, err := GlobalEventLoop.Await(GetUserName(4))
+		fmt.Printf("syncResult1 - value: %v, err: %v\n", syncResult1, err)
 
-		syncResult2 := GlobalEventLoop.Await(GetUserName(1))
-		fmt.Println("1 : user:", syncResult2)
+		syncResult2, err := GlobalEventLoop.Await(GetUserName(1))
+		fmt.Printf("syncResult2 - value: %v, err: %v\n", syncResult2, err)
 
-		asyncResult := GetUserName(6)
+		asyncResult := GetUserName(0)
 		GetUserName(3)
 
-		fmt.Println("asyncResult", GlobalEventLoop.Await(asyncResult))
+		syncResult, err := GlobalEventLoop.Await(asyncResult)
+		fmt.Printf("asyncResult - value: %v, err: %v\n", syncResult, err)
 
 		fmt.Println("done")
 
@@ -96,6 +97,5 @@ func main() {
 		}).Then(func(_ interface{}) {
 			fmt.Println("resolved outer promise")
 		})
-
 	})
 }

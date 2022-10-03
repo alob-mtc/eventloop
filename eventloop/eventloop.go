@@ -2,7 +2,6 @@ package eventloop
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -27,11 +26,15 @@ func GetGlobalEventLoop() *EventLoop {
 	return GlobalEventLoop
 }
 
-func (e *EventLoop) Await(currentP *Promise) interface{} {
+func (e *EventLoop) Await(currentP *Promise) (interface{}, error) {
 	defer currentP.Done()
 	currentP.RegisterHandler()
-	val := <-currentP.rev
-	return val
+	select {
+	case err := <-currentP.errChan:
+		return nil, err
+	case rev := <-currentP.rev:
+		return rev, nil
+	}
 }
 
 func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
@@ -129,12 +132,10 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 			defer func() {
 				if r := recover(); r != nil {
 					switch x := r.(type) {
-					case string:
-						p.errChan <- errors.New(x)
 					case error:
 						p.errChan <- x
 					default:
-						p.errChan <- errors.New("unknown error")
+						p.errChan <- fmt.Errorf(`unknown error: %v`, x)
 					}
 				} else {
 					close(p.err)
