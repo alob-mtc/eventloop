@@ -21,6 +21,12 @@ func GetUserNameWithPanic() *eventloop.Promise {
 func main() {
 	GlobalEventLoop.Main(func() {
 
+		f := GlobalEventLoop.NewFuture()
+
+		f.RegisterComplete(func(data interface{}) {
+			fmt.Println("Received data from future --> ", data.(string))
+		})
+
 		result := GetUserName(2)
 
 		result.Then(func(x interface{}) {
@@ -35,6 +41,13 @@ func main() {
 			fmt.Println("0 : err:", err)
 		})
 
+		go func() {
+			<-time.After(4 * time.Second)
+			f.SignalComplete("completed after 4 seconds")
+		}()
+
+		f.SignalComplete("another hello world")
+
 		GetUserName(5).Then(func(x interface{}) {
 			fmt.Println("5 : user:", x)
 			panic("a panic attack")
@@ -47,6 +60,11 @@ func main() {
 		}).Catch(func(err error) {
 			fmt.Println("15 : err:", err)
 		})
+
+		go func() {
+			<-time.After(2 * time.Second)
+			f.SignalComplete("completed after 2 seconds")
+		}()
 
 		//promise with panic
 		GetUserNameWithPanic().Then(func(i interface{}) {
@@ -93,27 +111,28 @@ func main() {
 ```shell
 run before promise returns
 0 : err: some error id(0s)
-2 : user: id(2ns): Test User
+Received data from future -->  another hello world
+Received data from future -->  completed after 2 seconds
 GetUserNameWithPanic err:  panic attack
+2 : user: id(2ns): Test User
 syncResult1 - value: id(4ns): Test User, err: <nil>
-syncResult2 - value: <nil>, err: some error id(0s)
+Received data from future -->  completed after 4 seconds
+5 : user: id(5ns): Test User
+5 : err: a panic attack
+syncResult2 - value: id(1ns): Test User, err: <nil>
 asyncResult - value: <nil>, err: some error id(0s)
 done
 outer async
 inner async
 resolved inner promise
-5 : user: id(5ns): Test User
-5 : err: unknown error: a panic attack
 resolved outer promise
 15 : user: id(15ns): Test User
-
-
 ```
 
 ## TODO
 
 - [x] nested promises
-- [ ] chained .then 
+- [ ] chained .then
 
 ```go
 GetUserName(7).Then(func(x interface{}) {
@@ -127,5 +146,8 @@ GetUserName(7).Then(func(x interface{}) {
 ```
 
 - [ ] await all promises
+- [x] basic Futures implementation
+- [ ] handle error in Futures
+- [ ] SignalFinally in Futures (called immediately after SignalComplete or SignalError)
 
 > just a fun project, we might just learn something

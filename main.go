@@ -34,6 +34,12 @@ func GetUserNameWithPanic() *eventloop.Promise {
 func main() {
 	GlobalEventLoop.Main(func() {
 
+		f := GlobalEventLoop.NewFuture()
+
+		f.RegisterComplete(func(data interface{}) {
+			fmt.Println("Received data from future --> ", data.(string))
+		})
+
 		result := GetUserName(2)
 
 		result.Then(func(x interface{}) {
@@ -48,6 +54,13 @@ func main() {
 			fmt.Println("0 : err:", err)
 		})
 
+		go func() {
+			<-time.After(4 * time.Second)
+			f.SignalComplete("completed after 4 seconds")
+		}()
+
+		f.SignalComplete("another hello world")
+
 		GetUserName(5).Then(func(x interface{}) {
 			fmt.Println("5 : user:", x)
 			panic("a panic attack")
@@ -60,6 +73,11 @@ func main() {
 		}).Catch(func(err error) {
 			fmt.Println("15 : err:", err)
 		})
+
+		go func() {
+			<-time.After(2 * time.Second)
+			f.SignalComplete("completed after 2 seconds")
+		}()
 
 		//promise with panic
 		GetUserNameWithPanic().Then(func(i interface{}) {
