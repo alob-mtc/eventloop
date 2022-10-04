@@ -183,7 +183,7 @@ func (f *Future) GetCompleteEventsFromFuture() []interface{} {
 	return f.completeEvent
 }
 
-func (f *Future) Set(value interface{}, future string) {
+func (f *Future) set(value interface{}, future string) {
 	switch future {
 	case "complete":
 		f.completeChan <- value
@@ -195,7 +195,7 @@ func (f *Future) RegisterComplete(futureFunc interface{}) {
 	f.onComFunc = futureFunc
 }
 
-func (f *Future) Signal() {
+func (f *Future) signal() {
 	// maybe this should be a blocking call?
 	go func() {
 	Loop:
@@ -217,9 +217,9 @@ func (f *Future) SignalComplete(value interface{}) {
 		go func() {
 			f.onComFunc.(func(interface{}))(value)
 			// should handle error here -- only if user registered a function for a future error event
-			f.Set(value, "complete")
+			f.set(value, "complete")
 		}()
-		f.Signal()
+		f.signal()
 	} else {
 		panic("no function registered for future event [SignalComplete]")
 	}
