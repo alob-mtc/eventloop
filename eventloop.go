@@ -1,4 +1,4 @@
-package eventloop
+package go_promises
 
 import (
 	"context"
@@ -14,11 +14,12 @@ var GlobalEventLoop *EventLoop
 type EventLoop struct {
 	promiseQueue []*Promise
 	size         uint64
+	signal       chan struct{}
 }
 
 func Init() {
 	once.Do(func() {
-		GlobalEventLoop = &EventLoop{promiseQueue: []*Promise{}}
+		GlobalEventLoop = &EventLoop{promiseQueue: []*Promise{}, signal: make(chan struct{})}
 	})
 }
 
@@ -59,6 +60,10 @@ func (e *EventLoop) Async(fn func() (interface{}, error)) *Promise {
 	return p
 }
 
+func (e *EventLoop) GetSignal() chan struct{} {
+	return e.signal
+}
+
 func promiseRecovery(resultChan chan interface{}, errChan chan error) func(result interface{}, err error) {
 	return func(result interface{}, err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
@@ -79,21 +84,25 @@ func promiseRecovery(resultChan chan interface{}, errChan chan error) func(resul
 }
 
 func (e *EventLoop) Main(fn func()) {
-	fn()
+	go fn()
 	//await all promises
 	e.awaitAll()
 }
 
 func (e *EventLoop) awaitAll() {
-	n := len(e.promiseQueue)
-	for i := n - 1; i >= 0; i-- {
-		p := e.promiseQueue[i]
-		if p.handler {
-			<-p.done
-		}
-		if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
-			// process fresh promise
-			e.awaitAll()
+	select {
+	case <-time.After(time.Second * 1):
+	case <-e.GetSignal():
+		n := len(e.promiseQueue)
+		for i := n - 1; i >= 0; i-- {
+			p := e.promiseQueue[i]
+			if p.handler {
+				<-p.done
+			}
+			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
+				// process fresh promise
+				e.awaitAll()
+			}
 		}
 	}
 }
@@ -110,6 +119,9 @@ type Promise struct {
 }
 
 func (e *EventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Promise {
+	if atomic.LoadUint64(&e.size) == 0 {
+		defer close(e.signal)
+	}
 	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
 	e.promiseQueue = append(e.promiseQueue, currentP)
 	return currentP
