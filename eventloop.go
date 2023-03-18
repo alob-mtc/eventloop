@@ -1,4 +1,4 @@
-package go_promises
+package go_future
 
 import (
 	"context"
