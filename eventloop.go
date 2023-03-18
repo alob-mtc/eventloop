@@ -100,11 +100,11 @@ func (e *eventLoop) Main(fn func()) {
 
 func (e *eventLoop) awaitAll() {
 	for {
-		e.sync.Lock()
 		n := len(e.promiseQueue)
-		e.sync.Unlock()
 		for i := n - 1; i >= 0; i-- {
+			e.sync.Lock()
 			p := e.promiseQueue[i]
+			e.sync.Unlock()
 			if p.handler {
 				<-p.done
 				//TODO clean up memory (promise)
