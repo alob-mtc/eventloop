@@ -34,6 +34,7 @@ type eventLoop struct {
 	size         uint64
 	signal       chan struct{}
 	keepAlive    bool
+	sync         sync.Mutex
 }
 
 func (e *eventLoop) Await(currentP *Promise) (interface{}, error) {
@@ -99,7 +100,9 @@ func (e *eventLoop) Main(fn func()) {
 
 func (e *eventLoop) awaitAll() {
 	for {
+		e.sync.Lock()
 		n := len(e.promiseQueue)
+		e.sync.Unlock()
 		for i := n - 1; i >= 0; i-- {
 			p := e.promiseQueue[i]
 			if p.handler {

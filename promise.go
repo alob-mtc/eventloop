@@ -19,7 +19,9 @@ func (e *eventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Prom
 		defer close(e.signal)
 	}
 	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
+	e.sync.Lock()
 	e.promiseQueue = append(e.promiseQueue, currentP)
+	e.sync.Unlock()
 	return currentP
 }
 
