@@ -126,6 +126,6 @@ GetUserName(7).Then(func(x interface{}) {
 })
 ```
 
-- [ ] await all promises
+- [x] await all promises
 
 > just a fun project, we might just learn something
