@@ -112,8 +112,8 @@ func (e *eventLoop) awaitAll() {
 				e.awaitAll()
 			}
 		}
-		if e.keepAlive {
-			e.awaitAll()
-		}
+	}
+	if e.keepAlive {
+		e.awaitAll()
 	}
 }
