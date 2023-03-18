@@ -98,22 +98,17 @@ func (e *eventLoop) Main(fn func()) {
 }
 
 func (e *eventLoop) awaitAll() {
-	select {
-	case <-time.After(time.Second * 1):
-	case <-e.signal:
+	for {
 		n := len(e.promiseQueue)
 		for i := n - 1; i >= 0; i-- {
 			p := e.promiseQueue[i]
 			if p.handler {
 				<-p.done
+				//TODO clean up memory (promise)
 			}
-			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && currentN > n {
-				// process fresh promise
-				e.awaitAll()
+			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && !(currentN > n) && !e.keepAlive {
+				break
 			}
 		}
-	}
-	if e.keepAlive {
-		e.awaitAll()
 	}
 }
