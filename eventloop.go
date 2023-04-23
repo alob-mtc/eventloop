@@ -15,7 +15,7 @@ var (
 
 func Init() {
 	once.Do(func() {
-		GlobalEventLoop = &eventLoop{promiseQueue: []*Promise{}, signal: make(chan struct{}), keepAlive: true}
+		GlobalEventLoop = &eventLoop{promiseQueue: []*Promise{}, keepAlive: true}
 	})
 }
 
@@ -32,7 +32,6 @@ type Future interface {
 type eventLoop struct {
 	promiseQueue []*Promise
 	size         uint64
-	signal       chan struct{}
 	keepAlive    bool
 	sync         sync.Mutex
 }
@@ -107,11 +106,14 @@ func (e *eventLoop) awaitAll() {
 			e.sync.Unlock()
 			if p.handler {
 				<-p.done
-				//TODO clean up memory (promise)
 			}
 			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && !(currentN > n) && !e.keepAlive {
 				break
 			}
 		}
+		// clean up memory (promise)
+		e.sync.Lock()
+		e.promiseQueue = e.promiseQueue[n:]
+		e.sync.Unlock()
 	}
 }

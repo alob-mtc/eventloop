@@ -15,9 +15,6 @@ type Promise struct {
 }
 
 func (e *eventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Promise {
-	if atomic.LoadUint64(&e.size) == 0 {
-		defer close(e.signal)
-	}
 	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
 	e.sync.Lock()
 	e.promiseQueue = append(e.promiseQueue, currentP)
