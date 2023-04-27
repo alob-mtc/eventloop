@@ -10,12 +10,12 @@ type Promise struct {
 	handler bool
 	rev     <-chan interface{}
 	errChan chan error
-	err     chan struct{}
+	err     bool
 	done    chan struct{}
 }
 
 func (e *eventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Promise {
-	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{}), err: make(chan struct{})}
+	currentP := &Promise{id: atomic.AddUint64(&e.size, 1), rev: rev, errChan: errChan, done: make(chan struct{})}
 	e.sync.Lock()
 	e.promiseQueue = append(e.promiseQueue, currentP)
 	e.sync.Unlock()
@@ -33,23 +33,31 @@ func (p *Promise) RegisterHandler() {
 func (p *Promise) Then(fn func(interface{})) *Promise {
 	p.RegisterHandler()
 	go func() {
-		select {
-		case <-p.err:
-		case val := <-p.rev:
-			defer func() {
-				if r := recover(); r != nil {
-					switch x := r.(type) {
-					case error:
-						p.errChan <- x
-					default:
-						p.errChan <- fmt.Errorf("%v", x)
-					}
-				} else {
-					close(p.err)
-					p.Done()
+		for {
+			select {
+			default:
+				if p.err {
+					return
 				}
-			}()
-			fn(val)
+			case val := <-p.rev:
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							switch x := r.(type) {
+							case error:
+								p.errChan <- x
+							default:
+								p.errChan <- fmt.Errorf("%v", x)
+							}
+						} else {
+							p.err = true
+							p.Done()
+						}
+					}()
+					fn(val)
+				}()
+				return
+			}
 		}
 	}()
 	return p
@@ -58,12 +66,17 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 func (p *Promise) Catch(fn func(err error)) {
 	p.RegisterHandler()
 	go func() {
-		select {
-		case <-p.err:
-		case err := <-p.errChan:
-			close(p.err)
-			fn(err)
-			p.Done()
+		for {
+			select {
+			default:
+				if p.err {
+					return
+				}
+			case err := <-p.errChan:
+				fn(err)
+				p.err = true
+				p.Done()
+			}
 		}
 	}()
 }
