@@ -94,6 +94,7 @@ func (e *eventLoop) Run() {
 
 func (e *eventLoop) awaitAll() {
 	init := true
+outer:
 	for {
 		n := len(e.promiseQueue)
 		if init && n == 0 {
@@ -107,7 +108,7 @@ func (e *eventLoop) awaitAll() {
 				<-p.done
 			}
 			if currentN := int(atomic.LoadInt64(&e.size)); i == 0 && !(currentN > n) {
-				break
+				break outer
 			}
 		}
 		// clean up memory (promise)
