@@ -26,7 +26,7 @@ func GetGlobalEventLoop() Future {
 type Future interface {
 	Await(currentP *Promise) (interface{}, error)
 	Async(fn func() (interface{}, error)) *Promise
-	Main(fn func())
+	Run()
 }
 
 type eventLoop struct {
@@ -88,11 +88,7 @@ func promiseRecovery(resultChan chan interface{}, errChan chan error) func(resul
 	}
 }
 
-func (e *eventLoop) Main(fn func()) {
-	go func() {
-		fn()
-		e.keepAlive = false
-	}()
+func (e *eventLoop) Run() {
 	//await all promises
 	e.awaitAll()
 }
@@ -107,7 +103,7 @@ func (e *eventLoop) awaitAll() {
 			if p.handler {
 				<-p.done
 			}
-			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && !(currentN > n) && !e.keepAlive {
+			if currentN := int(atomic.LoadUint64(&e.size)); i == 0 && !(currentN > n) {
 				break
 			}
 		}
