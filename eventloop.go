@@ -110,6 +110,7 @@ func (e *eventLoop) awaitAll() {
 		// clean up memory (promise)
 		e.sync.Lock()
 		e.promiseQueue = e.promiseQueue[n:]
+		atomic.StoreUint64(&e.size, e.size-uint64(n))
 		e.sync.Unlock()
 	}
 }
