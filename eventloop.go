@@ -14,9 +14,37 @@ var (
 )
 
 func Init() {
+	queue := []func() bool{}
+	var lock sync.Mutex
 	once.Do(func() {
 		GlobalEventLoop = &eventLoop{promiseQueue: make([]*Promise, 0)}
 	})
+	// TODO: add evnt loop
+	go func() {
+		for work := range eventBus {
+			lock.Lock()
+			queue = append(queue, *work)
+			lock.Unlock()
+		}
+	}()
+
+	go func() {
+		for {
+			n := len(queue)
+			retry := []func() bool{}
+			for i := 0; i < n; i++ {
+				currentWork := queue[i]
+
+				if done := currentWork(); !done {
+					retry = append(retry, currentWork)
+				}
+			}
+			lock.Lock()
+			queue = queue[n:]
+			queue = append(queue, retry...)
+			lock.Unlock()
+		}
+	}()
 }
 
 func GetGlobalEventLoop() Future {
@@ -39,6 +67,7 @@ func (e *eventLoop) Await(currentP *Promise) (interface{}, error) {
 	defer currentP.Done()
 	currentP.RegisterHandler()
 	select {
+
 	case err := <-currentP.errChan:
 		return nil, err
 	case rev := <-currentP.rev:
@@ -108,6 +137,7 @@ outer:
 				<-p.done
 			}
 			if currentN := int(atomic.LoadInt64(&e.size)); i == 0 && !(currentN > n) {
+				close(eventBus)
 				break outer
 			}
 		}
