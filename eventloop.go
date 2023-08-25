@@ -15,7 +15,7 @@ var (
 
 func InitGlobalEventLoop() Future {
 	once.Do(func() {
-		queue := []func() bool{}
+		var queue []func() bool
 		var lock sync.Mutex
 		// event loop
 		go func() {
@@ -29,7 +29,7 @@ func InitGlobalEventLoop() Future {
 		go func() {
 			for {
 				n := len(queue)
-				retry := []func() bool{}
+				var retry []func() bool
 				for i := 0; i < n; i++ {
 					currentWork := queue[i]
 
@@ -49,8 +49,7 @@ func InitGlobalEventLoop() Future {
 }
 
 type Future interface {
-	Await(currentP *Promise) (interface{}, error)
-	Async(fn func() (interface{}, error)) *Promise
+	Async(fn func() (any, error)) *Promise
 	Run()
 }
 
@@ -60,20 +59,13 @@ type eventLoop struct {
 	sync         sync.Mutex
 }
 
-func (e *eventLoop) Await(currentP *Promise) (interface{}, error) {
-	defer currentP.Done()
-	currentP.RegisterHandler()
-	select {
-
-	case err := <-currentP.errChan:
-		return nil, err
-	case rev := <-currentP.rev:
-		return rev, nil
-	}
+func (e *eventLoop) Run() {
+	//await all promises
+	e.awaitAll()
 }
 
-func (e *eventLoop) Async(fn func() (interface{}, error)) *Promise {
-	resultChan := make(chan interface{})
+func (e *eventLoop) Async(fn func() (any, error)) *Promise {
+	resultChan := make(chan any)
 	errChan := make(chan error)
 	p := e.newPromise(resultChan, errChan)
 	go func() {
@@ -94,8 +86,8 @@ func (e *eventLoop) Async(fn func() (interface{}, error)) *Promise {
 	return p
 }
 
-func promiseRecovery(resultChan chan interface{}, errChan chan error) func(result interface{}, err error) {
-	return func(result interface{}, err error) {
+func promiseRecovery(resultChan chan any, errChan chan error) func(result any, err error) {
+	return func(result any, err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 		defer cancel()
 		if err != nil {
@@ -111,11 +103,6 @@ func promiseRecovery(resultChan chan interface{}, errChan chan error) func(resul
 		case <-ctx.Done():
 		}
 	}
-}
-
-func (e *eventLoop) Run() {
-	//await all promises
-	e.awaitAll()
 }
 
 func (e *eventLoop) awaitAll() {

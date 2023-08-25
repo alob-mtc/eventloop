@@ -56,16 +56,16 @@ func main() {
 	})
 
 	//	await
-	syncResult1, err := GlobalEventLoop.Await(GetUserName(4))
+	syncResult1, err := GetUserName(4).Await()
 	fmt.Printf("syncResult1 - value: %v, err: %v\n", syncResult1, err)
 
-	syncResult2, err := GlobalEventLoop.Await(GetUserName(1))
+	syncResult2, err := GetUserName(1).Await()
 	fmt.Printf("syncResult2 - value: %v, err: %v\n", syncResult2, err)
 
 	asyncResult := GetUserName(0)
 	GetUserName(3)
 
-	syncResult, err := GlobalEventLoop.Await(asyncResult)
+	syncResult, err := asyncResult.Await()
 	fmt.Printf("asyncResult - value: %v, err: %v\n", syncResult, err)
 
 	fmt.Println("done")

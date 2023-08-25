@@ -24,16 +24,16 @@ func (e *eventLoop) newPromise(rev <-chan interface{}, errChan chan error) *Prom
 	return currentP
 }
 
-func (p *Promise)  Done() {
+func (p *Promise) complete() {
 	close(p.done)
 }
 
-func (p *Promise) RegisterHandler() {
+func (p *Promise) registerHandler() {
 	p.handler = true
 }
 
 func (p *Promise) Then(fn func(interface{})) *Promise {
-	p.RegisterHandler()
+	p.registerHandler()
 	work := func() bool {
 		select {
 		default:
@@ -53,7 +53,7 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 						}
 					} else {
 						p.doneFlag = true
-						p.Done()
+						p.complete()
 					}
 				}()
 				fn(val)
@@ -66,7 +66,7 @@ func (p *Promise) Then(fn func(interface{})) *Promise {
 }
 
 func (p *Promise) Catch(fn func(err error)) {
-	p.RegisterHandler()
+	p.registerHandler()
 	work := func() bool {
 		select {
 		default:
@@ -77,9 +77,21 @@ func (p *Promise) Catch(fn func(err error)) {
 		case err := <-p.errChan:
 			p.doneFlag = true
 			go fn(err)
-			p.Done()
+			p.complete()
 			return true
 		}
 	}
 	eventBus <- &work
+}
+
+func (p *Promise) Await() (any, error) {
+	defer p.complete()
+	p.registerHandler()
+	select {
+
+	case err := <-p.errChan:
+		return nil, err
+	case rev := <-p.rev:
+		return rev, nil
+	}
 }
